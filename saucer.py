@@ -101,22 +101,23 @@ class Saucer():
         can = re.compile(Saucer.__can_str__, re.I)
 
         for tmp in res['query']['results']['option']:
-            beer = {}
+            name = tmp['content']
 
-            beer['name'] = self.__sanitize__(tmp['content'])
+            beer = {}
             beer['id'] = tmp['value'].strip()
             beer['type'] = Saucer.DRAFT 
+            beer['name'] = self.__sanitize__(name)
 
             # Serving type
-            if btl.search(beer['name']):
+            if btl.search(name):
                 beer['type'] = Saucer.BOTTLE
-                beer['name'] = btl.sub('', beer['name'])
-            elif cask.search(beer['name']):
+                beer['name'] = self.__sanitize__(btl.sub('', name))
+            elif cask.search(name):
                 beer['type'] = Saucer.CASK
-                beer['name'] = cask.sub('', beer['name'])
-            elif can.search(beer['name']):
+                beer['name'] = self.__sanitize__(cask.sub('', name))
+            elif can.search(name):
                 beer['type'] = Saucer.CAN
-                beer['name'] = can.sub('', beer['name'])
+                beer['name'] = self.__sanitize__(can.sub('', name))
 
             beers.append(beer)
 
