@@ -25,7 +25,7 @@ class Saucer():
         Saucer.san = 0.0
 
     def __sanitize(self, arg):
-        x = time.time()
+        t1 = time.time()
 
         ret = "N/A"
 
@@ -44,8 +44,8 @@ class Saucer():
             except KeyError:
                 pass
 
-        y = time.time()
-        Saucer.san += (y - x)
+        t2 = time.time()
+        Saucer.san += (t2 - t1)
 
         return ret
 
@@ -54,7 +54,7 @@ class Saucer():
         return simplejson.load(urllib.urlopen( "%s?%s" % (base_url, url)))
 
     def __create_detail_list(self, res):
-        x = time.time()
+        t1 = time.time()
 
         size = len(res)
         ii = 0
@@ -81,8 +81,7 @@ class Saucer():
 
             ii += 2
 
-        y = time.time()
-        Saucer.create_details += (y - x)
+        Saucer.create_details += time.time() - t1
 
         return mylist
 
@@ -122,24 +121,23 @@ class Saucer():
         return beers
 
     def getBeerDetails(self, beers):
-        xpath= "xpath='//table/tr/td/p'"
-        q = "select * from html where ("
+        xpath = "xpath='//table/tr/td/p'"
+        query = "select * from html where ("
         ii = 0
 
         for beer in beers:
             if ii:
-                q += " or "
+                query += " or "
 
-            q += "url=\"http://www.beerknurd.com/store.beers.process.php?brew=%s\"" % (beer)
+            query += "url=\"http://www.beerknurd.com/store.beers.process.php?brew=%s\"" % (beer)
             ii = 1
-        q += ") and %s " % (xpath)
+        query += ") and %s " % (xpath)
 
-        x = time.time()
+        t1 = time.time()
 
-        res = self.__fetch_json(urllib.urlencode({"format":"json", "q": q}))
+        res = self.__fetch_json(urllib.urlencode({"format":"json", "q": query}))
 
-        y = time.time()
-        Saucer.fetch += (y - x)
+        Saucer.fetch += time.time() - t1
 
         try:
             return self.__create_detail_list(res['query']['results']['p'])
