@@ -1,6 +1,5 @@
 import re
 import urllib
-import logging
 import time
 
 from django.utils import simplejson
@@ -16,16 +15,16 @@ class Saucer():
     fetch = 0.0
     san = 0.0
 
-    __btl_str__ = r"\(BTL\)"
-    __can_str__ = r"\(CAN\)"
-    __cask_str__ = r"\(CASK\)"
+    __btl_str = r"\(BTL\)"
+    __can_str = r"\(CAN\)"
+    __cask_str = r"\(CASK\)"
 
     def reset_stats(self):
         Saucer.create_details = 0.0
         Saucer.fetch = 0.0
         Saucer.san = 0.0
 
-    def __sanitize__(self, arg):
+    def __sanitize(self, arg):
         x = time.time()
 
         ret = "N/A"
@@ -50,36 +49,35 @@ class Saucer():
 
         return ret
 
-    def __fetch_json__(self, url):
+    def __fetch_json(self, url):
         base_url = "http://query.yahooapis.com/v1/public/yql"
         return simplejson.load(urllib.urlopen( "%s?%s" % (base_url, url)))
 
-    def __create_detail_list__(self, res):
+    def __create_detail_list(self, res):
         x = time.time()
 
         size = len(res)
         ii = 0
-        sep = 1
         mylist = []
-        dict = {}
+        mydict = {}
 
         # Loop through resulting list in pairs and collect 6 key,value pairs
         # and then add the dictionary to the returning list
         while ii < size:
-            key = self.__sanitize__(res[ii])
-            val = self.__sanitize__(res[ii + 1])
+            key = self.__sanitize(res[ii])
+            val = self.__sanitize(res[ii + 1])
 
             # Handles the case that some entries might not have 6 unique pairs
             # so if we already have the key, this entry is another dictionary
-            if key in dict:
-                mylist.append(dict)
-                dict = {}
+            if key in mydict:
+                mylist.append(mydict)
+                mydict = {}
 
-            dict[key] = val
+            mydict[key] = val
 
             # Last go around in loop, save it
             if ii + 2 >= size:
-                mylist.append(dict)
+                mylist.append(mydict)
 
             ii += 2
 
@@ -92,13 +90,13 @@ class Saucer():
         url = urllib.urlencode({"format":"json",
             "q":"select * from html where url=\"http://www.beerknurd.com/store.sub.php?store=6&sub=beer&groupby=name\" and xpath='//select[@id=\"brews\"]/option'"})
 
-        res = self.__fetch_json__(url)
+        res = self.__fetch_json(url)
 
         # Hide the ugly yql/html parsing and create list of dictionaries 
         beers = []
-        btl = re.compile(Saucer.__btl_str__, re.I)
-        cask = re.compile(Saucer.__cask_str__, re.I)
-        can = re.compile(Saucer.__can_str__, re.I)
+        btl = re.compile(Saucer.__btl_str, re.I)
+        cask = re.compile(Saucer.__cask_str, re.I)
+        can = re.compile(Saucer.__can_str, re.I)
 
         for tmp in res['query']['results']['option']:
             name = tmp['content']
@@ -106,18 +104,18 @@ class Saucer():
             beer = {}
             beer['id'] = tmp['value'].strip()
             beer['type'] = Saucer.DRAFT 
-            beer['name'] = self.__sanitize__(name)
+            beer['name'] = self.__sanitize(name)
 
             # Serving type
             if btl.search(name):
                 beer['type'] = Saucer.BOTTLE
-                beer['name'] = self.__sanitize__(btl.sub('', name))
+                beer['name'] = self.__sanitize(btl.sub('', name))
             elif cask.search(name):
                 beer['type'] = Saucer.CASK
-                beer['name'] = self.__sanitize__(cask.sub('', name))
+                beer['name'] = self.__sanitize(cask.sub('', name))
             elif can.search(name):
                 beer['type'] = Saucer.CAN
-                beer['name'] = self.__sanitize__(can.sub('', name))
+                beer['name'] = self.__sanitize(can.sub('', name))
 
             beers.append(beer)
 
@@ -138,13 +136,13 @@ class Saucer():
 
         x = time.time()
 
-        res = self.__fetch_json__(urllib.urlencode({"format":"json", "q": q}))
+        res = self.__fetch_json(urllib.urlencode({"format":"json", "q": q}))
 
         y = time.time()
         Saucer.fetch += (y - x)
 
         try:
-            return self.__create_detail_list__(res['query']['results']['p'])
+            return self.__create_detail_list(res['query']['results']['p'])
         # Maybe no results came back b/c beers were invalid, etc.
         except KeyError:
             return []
