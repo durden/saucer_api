@@ -4,8 +4,7 @@ import re
 import urllib
 import time
 
-from django.utils import simplejson
-
+import simplejson
 
 def fetch_json(url):
     """Fetch json representation of given url"""
