@@ -1,3 +1,5 @@
+"""Module for retrieving current beers offered by Houston area Flying Saucer"""
+
 import re
 import urllib
 import time
@@ -5,28 +7,37 @@ import time
 from django.utils import simplejson
 
 
+def fetch_json(url):
+    """Fetch json representation of given url"""
+    return simplejson.load(urllib.urlopen("%s?%s" % (Saucer.BASE_URL, url)))
+
 class Saucer():
+    """Provides API for users to retreive beer information from Flying Saucer"""
     BOTTLE = "Bottle"
     DRAFT = "Draft"
     CAN = "Can"
     CASK = "Cask"
 
-    create_details = 0.0
-    fetch = 0.0
-    san = 0.0
-
+    BASE_URL = "http://query.yahooapis.com/v1/public/yql"
     __btl_str = r"\(BTL\)"
     __can_str = r"\(CAN\)"
     __cask_str = r"\(CASK\)"
 
+    def __init__(self):
+        """Create instance of Saucer API"""
+        self.create_details = 0.0
+        self.fetch = 0.0
+        self.san = 0.0
+
     def reset_stats(self):
-        Saucer.create_details = 0.0
-        Saucer.fetch = 0.0
-        Saucer.san = 0.0
+        """Reset debug stat collection details"""
+        self.create_details = 0.0
+        self.fetch = 0.0
+        self.san = 0.0
 
     def __sanitize(self, arg):
+        """Cleanup string/dictionary by compressing whitespace characters"""
         t1 = time.time()
-
         ret = "N/A"
 
         if (isinstance(arg, unicode)):
@@ -38,28 +49,27 @@ class Saucer():
         # try to treat it a like a dictionary with 'content' as key
         if (isinstance(arg, dict)):
             try:
-                # Suppress multiple whitespace characters and leading/trailing
-                # whitespace
                 ret = re.sub('\s+', ' ', arg['content']).strip()
             except KeyError:
                 pass
 
         t2 = time.time()
-        Saucer.san += (t2 - t1)
-
+        self.san += (t2 - t1)
         return ret
 
-    def __fetch_json(self, url):
-        base_url = "http://query.yahooapis.com/v1/public/yql"
-        return simplejson.load(urllib.urlopen( "%s?%s" % (base_url, url)))
-
     def __create_detail_list(self, res):
+        """Translate res into list of dictionaries
+            - Treat res as list of key/value pairs (size must be even)
+        """
         t1 = time.time()
 
         size = len(res)
         ii = 0
         mylist = []
         mydict = {}
+
+        if size % 2:
+            raise Exception("Invalid result (%s)" % (res))
 
         # Loop through resulting list in pairs and collect 6 key,value pairs
         # and then add the dictionary to the returning list
@@ -81,15 +91,22 @@ class Saucer():
 
             ii += 2
 
-        Saucer.create_details += time.time() - t1
+        self.create_details += time.time() - t1
 
         return mylist
 
-    def getAllBeers(self):
-        url = urllib.urlencode({"format":"json",
-            "q":"select * from html where url=\"http://www.beerknurd.com/store.sub.php?store=6&sub=beer&groupby=name\" and xpath='//select[@id=\"brews\"]/option'"})
+    def get_all_beers(self):
+        """Fetch all beer type/names from saucer website
+            - Return list of dictionaries with keys: id, type, name
+        """
 
-        res = self.__fetch_json(url)
+        url = urllib.urlencode({"format":"json",
+            "q":"select * from html where url=\"" + \
+                "http://www.beerknurd.com/store.sub.php?" + \
+                "store=6&sub=beer&groupby=name\" and " + \
+                "xpath='//select[@id=\"brews\"]/option'"})
+
+        res = fetch_json(url)
 
         # Hide the ugly yql/html parsing and create list of dictionaries 
         beers = []
@@ -120,7 +137,12 @@ class Saucer():
 
         return beers
 
-    def getBeerDetails(self, beers):
+    def get_beer_details(self, beers):
+        """Fetch beer details from saucer website
+            - Treat beers as list of ids (retrieved from get_all_beers() method)
+              to fetch details about
+        """
+
         xpath = "xpath='//table/tr/td/p'"
         query = "select * from html where ("
         ii = 0
@@ -129,15 +151,15 @@ class Saucer():
             if ii:
                 query += " or "
 
-            query += "url=\"http://www.beerknurd.com/store.beers.process.php?brew=%s\"" % (beer)
+            query += "url=\"http://www.beerknurd.com/" + \
+                     "store.beers.process.php?brew=%s\"" % (beer)
             ii = 1
+
         query += ") and %s " % (xpath)
-
         t1 = time.time()
-
-        res = self.__fetch_json(urllib.urlencode({"format":"json", "q": query}))
-
-        Saucer.fetch += time.time() - t1
+        print query
+        res = fetch_json(urllib.urlencode({"format":"json", "q": query}))
+        self.fetch += time.time() - t1
 
         try:
             return self.__create_detail_list(res['query']['results']['p'])
