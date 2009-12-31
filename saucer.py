@@ -39,7 +39,7 @@ class Saucer():
         t1 = time.time()
         ret = "N/A"
 
-        if (isinstance(arg, unicode)):
+        if (isinstance(arg, unicode) or isinstance(arg, str)):
             # Suppress multiple whitespace characters and leading/trailing
             # whitespace
             ret = re.sub('\s+', ' ', arg).strip()
@@ -156,7 +156,6 @@ class Saucer():
 
         query += ") and %s " % (xpath)
         t1 = time.time()
-        print query
         res = fetch_json(urllib.urlencode({"format":"json", "q": query}))
         self.fetch += time.time() - t1
 
