@@ -6,12 +6,14 @@ import time
 
 import simplejson
 
+
 def fetch_json(url):
     """Fetch json representation of given url"""
     return simplejson.load(urllib.urlopen("%s?%s" % (Saucer.BASE_URL, url)))
 
+
 class Saucer():
-    """Provides API for users to retreive beer information from Flying Saucer"""
+    """API for users to retreive beer information from Flying Saucer"""
     BOTTLE = "Bottle"
     DRAFT = "Draft"
     CAN = "Can"
@@ -99,15 +101,15 @@ class Saucer():
             - Return list of dictionaries with keys: id, type, name
         """
 
-        url = urllib.urlencode({"format":"json",
-            "q":"select * from html where url=\"" + \
+        url = urllib.urlencode({"format": "json",
+            "q": "select * from html where url=\"" + \
                 "http://www.beerknurd.com/store.sub.php?" + \
                 "store=6&sub=beer&groupby=name\" and " + \
                 "xpath='//select[@id=\"brews\"]/option'"})
 
         res = fetch_json(url)
 
-        # Hide the ugly yql/html parsing and create list of dictionaries 
+        # Hide the ugly yql/html parsing and create list of dictionaries
         beers = []
         btl = re.compile(Saucer.__btl_str, re.I)
         cask = re.compile(Saucer.__cask_str, re.I)
@@ -118,7 +120,7 @@ class Saucer():
 
             beer = {}
             beer['id'] = tmp['value'].strip()
-            beer['type'] = Saucer.DRAFT 
+            beer['type'] = Saucer.DRAFT
             beer['name'] = self.__sanitize(name)
 
             # Serving type
@@ -138,7 +140,7 @@ class Saucer():
 
     def get_beer_details(self, beers):
         """Fetch beer details from saucer website
-            - Treat beers as list of ids (retrieved from get_all_beers() method)
+            - Treat beers as list of ids (retrieved from get_all_beers method)
               to fetch details about
         """
 
@@ -156,7 +158,7 @@ class Saucer():
 
         query += ") and %s " % (xpath)
         t1 = time.time()
-        res = fetch_json(urllib.urlencode({"format":"json", "q": query}))
+        res = fetch_json(urllib.urlencode({"format": "json", "q": query}))
         self.fetch += time.time() - t1
 
         try:
