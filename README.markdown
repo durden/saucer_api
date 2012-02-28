@@ -2,10 +2,12 @@ This is a small python module that implements a class, Saucer, that can be used
 to retrieve the current beers available at the Flying Saucer Houston location.
 
 Required packages:
+
     - Python 2.5
     - Simplejson 2.0.9
 
 Nice to have packages:
+
     - Pylint 0.19.0
 
 This project uses the pylint python package for code analysis and to ensure
