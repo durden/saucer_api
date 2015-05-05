@@ -144,7 +144,7 @@ class Saucer():
               to fetch details about
         """
 
-        xpath = "xpath='//table/tr/td/p'"
+        xpath = "xpath='//table/tbody/tr/td'"
         query = "select * from html where ("
         ii = 0
 
@@ -162,7 +162,7 @@ class Saucer():
         self.fetch += time.time() - t1
 
         try:
-            return self.__create_detail_list(res['query']['results']['p'])
+            return self.__create_detail_list(res['query']['results']['td'])
         # Maybe no results came back b/c beers were invalid, etc.
         except KeyError:
             return []
