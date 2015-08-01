@@ -1,15 +1,10 @@
 """Module for retrieving current beers offered by Houston area Flying Saucer"""
 
 import re
-import urllib
+import urllib2
 import time
 
-import simplejson
-
-
-def fetch_json(url):
-    """Fetch json representation of given url"""
-    return simplejson.load(urllib.urlopen("%s?%s" % (Saucer.BASE_URL, url)))
+from BeautifulSoup import BeautifulSoup
 
 
 class Saucer():
@@ -19,7 +14,6 @@ class Saucer():
     CAN = "Can"
     CASK = "Cask"
 
-    BASE_URL = "http://query.yahooapis.com/v1/public/yql"
     __btl_str = r"\(BTL\)"
     __can_str = r"\(CAN\)"
     __cask_str = r"\(CASK\)"
@@ -64,50 +58,24 @@ class Saucer():
         """
         t1 = time.time()
 
-        size = len(res)
-        ii = 0
-        mylist = []
-        mydict = {}
+        dict_ = {}
+        for tr in res:
+            tds = tr.findAll('td')
 
-        if size % 2:
-            raise Exception("Invalid result (%s)" % (res))
+            # key value pairs
+            if len(tds) != 2:
+                continue
 
-        # Loop through resulting list in pairs and collect 6 key,value pairs
-        # and then add the dictionary to the returning list
-        while ii < size:
-            key = self.__sanitize(res[ii])
-            val = self.__sanitize(res[ii + 1])
-
-            # Handles the case that some entries might not have 6 unique pairs
-            # so if we already have the key, this entry is another dictionary
-            if key in mydict:
-                mylist.append(mydict)
-                mydict = {}
-
-            mydict[key] = val
-
-            # Last go around in loop, save it
-            if ii + 2 >= size:
-                mylist.append(mydict)
-
-            ii += 2
+            dict_[str(tds[0].string)] = str(tds[1].string)
 
         self.create_details += time.time() - t1
 
-        return mylist
+        return dict_
 
     def get_all_beers(self):
         """Fetch all beer type/names from saucer website
             - Return list of dictionaries with keys: id, type, name
         """
-
-        url = urllib.urlencode({"format": "json",
-            "q": "select * from html where url=\"" + \
-                "http://www.beerknurd.com/store.sub.php?" + \
-                "store=6&sub=beer&groupby=name\" and " + \
-                "xpath='//select[@id=\"brews\"]/option'"})
-
-        res = fetch_json(url)
 
         # Hide the ugly yql/html parsing and create list of dictionaries
         beers = []
@@ -115,11 +83,18 @@ class Saucer():
         cask = re.compile(Saucer.__cask_str, re.I)
         can = re.compile(Saucer.__can_str, re.I)
 
-        for tmp in res['query']['results']['option']:
-            name = tmp['content']
+        url = 'http://www.beerknurd.com/store.sub.php?store=6&sub=beer&groupby=name'
+        f = urllib2.urlopen(url)
+        soup = BeautifulSoup(f.read())
+        brews = soup.find('select', id='brews')
+
+        for tag in brews:
+            name = str(tag.string.strip())
+            if not name:
+                continue
 
             beer = {}
-            beer['id'] = tmp['value'].strip()
+            beer['id'] = str(tag['value'].strip())
             beer['type'] = Saucer.DRAFT
             beer['name'] = self.__sanitize(name)
 
@@ -144,25 +119,23 @@ class Saucer():
               to fetch details about
         """
 
-        xpath = "xpath='//table/tbody/tr/td'"
-        query = "select * from html where ("
-        ii = 0
+        all_details = []
+        for id_ in beers:
+            url = 'http://www.beerknurd.com/store.beers.process.php?brew=%s' % (id_)
+            f = urllib2.urlopen(url)
 
-        for beer in beers:
-            if ii:
-                query += " or "
+            soup = BeautifulSoup(f.read())
+            trs = soup.findAll('tr')
 
-            query += "url=\"http://www.beerknurd.com/" + \
-                     "store.beers.process.php?brew=%s\"" % (beer)
-            ii = 1
+            details = self.__create_detail_list(trs)
 
-        query += ") and %s " % (xpath)
+            # Saucer html will return None for everything if a beer doesn't
+            # exist so remove it from return.
+            values = details.values()
+            if values == ['None'] * len(values):
+                continue
+
+            all_details.append(details)
+
         t1 = time.time()
-        res = fetch_json(urllib.urlencode({"format": "json", "q": query}))
-        self.fetch += time.time() - t1
-
-        try:
-            return self.__create_detail_list(res['query']['results']['td'])
-        # Maybe no results came back b/c beers were invalid, etc.
-        except KeyError:
-            return []
+        return all_details
