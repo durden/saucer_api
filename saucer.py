@@ -66,7 +66,9 @@ class Saucer():
             if len(tds) != 2:
                 continue
 
-            dict_[str(tds[0].string)] = str(tds[1].string)
+            key = self.__sanitize(str(tds[0].string))
+            value = str(tds[1].string)
+            dict_[key] = value
 
         self.create_details += time.time() - t1
 
